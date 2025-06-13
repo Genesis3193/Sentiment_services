@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Анализ Интонации</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .bar-container {
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      padding: 5px;
+      height: 60px;
+    }
+    .bar-label {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .bar-fill {
+      height: 30px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      transition: width 1s ease-in-out;
+      color: black;
+      font-weight: bold;
+      padding-left: 6px;
+      min-width: 40px;
+    }
+    .text-block {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container mt-5">
+    <h2 class="mb-4">Анализ настроя пользователя</h2>
+
+    <form id="textForm">
+      <div class="mb-3">
+        <label for="userText" class="form-label">Введите текст обращения:</label>
+        <textarea class="form-control" id="userText" rows="8"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label for="fileInput" class="form-label">или загрузите файл .txt, .csv:</label>
+        <input class="form-control" type="file" id="fileInput" accept=".txt,.csv">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Анализировать</button>
+    </form>
+
+    <div class="mt-5" id="results" style="display:none;">
+      <h4>Результаты анализа:</h4>
+      <div id="tone"></div>
+    </div>
+  </div>
+
+  <script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('textForm');
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const textValue = document.getElementById('userText')?.value.trim();
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!textValue && !file) {
+          alert('Пожалуйста, введите текст или загрузите файл.');
+          return;
+        }
+
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function () {
+            const lines = reader.result.split('\n').filter(line => line.trim());
+            const jsonObject = {
+                messages: lines
+            };
+            const jsonString = JSON.stringify(jsonObject);
+            fetchPredictions(jsonString, 'файл');
+          };
+          reader.readAsText(file);
+        } else {
+          const lines = textValue.split('\n').filter(line => line.trim());
+          const jsonObject = {
+                messages: lines
+          };
+          const jsonString = JSON.stringify(jsonObject);
+          fetchPredictions(jsonString, 'текстовое поле');
+        }
+      });
+    });
+
+    function fetchPredictions(lines, sourceLabel) {
+      const resultsContainer = document.getElementById('tone');
+      resultsContainer.innerHTML = '';
+      document.getElementById('results').style.display = 'block';
+
+      const header = document.createElement('div');
+      header.className = 'mb-3 text-muted';
+      header.innerText = `Источник: ${sourceLabel}`;
+      resultsContainer.appendChild(header);
+
+      fetch('http://127.0.0.1:8080/read_msgs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: lines
+      })
+      .then(response => {console.log('Response from server:', response);
+      return response.json();
+    })
+      .then(data => {
+        const predictions = data.tone;
+        const messages = data.messages;
+        if (!Array.isArray(predictions) || !Array.isArray(messages)) {
+          throw new Error('Некорректный формат ответа от сервера');
+        }
+
+        predictions.forEach((line, idx) => {
+          const tones = predictions[idx];
+          const block = document.createElement('div');
+          block.className = 'text-block';
+
+          const lineText = document.createElement('div');
+          lineText.className = 'fw-bold mb-2';
+          lineText.innerText = `Сообщение: ${messages[idx]}`;
+          block.appendChild(lineText);
+
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          const col = document.createElement('div');
+          col.className = 'col-md-3';
+
+          const container = document.createElement('div');
+          container.className = 'bar-container';
+
+          const labelElem = document.createElement('div');
+          labelElem.className = 'bar-label';
+          labelElem.innerText = `${line.toUpperCase()}`;
+
+          container.appendChild(labelElem);
+          col.appendChild(container);
+          row.appendChild(col);
+
+          block.appendChild(row);
+          resultsContainer.appendChild(block);
+        });
+      })
+      .catch(err => {
+          alert('Ошибка при обращении к API: ' + err.message);
+      });
+    }
+  </script>
+</body>
+</html>

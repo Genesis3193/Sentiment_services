@@ -1,0 +1,7 @@
+torch
+flask
+transformers
+logging
+json
+flask_cors
+numpy
