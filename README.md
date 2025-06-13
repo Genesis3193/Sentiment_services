@@ -32,7 +32,8 @@
 
 - Python 3.12
 - Flask — для создания API
-- PyTorch / Hugging_face/E5_small
+- PyTorch / Hugging_face /E5_small (для обучения)
+- PyTorch / transforms (для инференса)
 - HTML/CSS/JavaScript/Bootstrap
 
 ---
